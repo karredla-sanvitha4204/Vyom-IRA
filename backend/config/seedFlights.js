@@ -582,4 +582,5 @@ async function seedFlights() {
     }
 }
 
+seedFlights.SAMPLE_FLIGHTS = SAMPLE_FLIGHTS;
 module.exports = seedFlights;

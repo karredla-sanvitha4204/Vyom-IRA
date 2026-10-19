@@ -1,29 +1,47 @@
 const mongoose = require("mongoose");
 const Flight = require("../models/Flight");
 const Booking = require("../models/Booking");
+const seedFlights = require("../config/seedFlights");
+const SAMPLE_FLIGHTS = seedFlights.SAMPLE_FLIGHTS || [];
 
 /**
  * List all flights with optional route filtering.
+ * Connects to MongoDB when available; seamlessly falls back to authoritative demonstration flights.
  */
 exports.getAllFlights = async (req, res) => {
     try {
-        if (mongoose.connection.readyState !== 1) {
-            return res.status(503).json({
-                error: "Database is connecting or unavailable. Please verify MONGODB_URI in Render environment variables."
-            });
-        }
-        const filter = {};
-        if (req.query.source) {
-            filter.source = { $regex: new RegExp(req.query.source, "i") };
-        }
-        if (req.query.destination) {
-            filter.destination = { $regex: new RegExp(req.query.destination, "i") };
-        }
-        if (req.query.company) {
-            filter.company = { $regex: new RegExp(req.query.company, "i") };
+        if (mongoose.connection.readyState === 1) {
+            const filter = {};
+            if (req.query.source) {
+                filter.source = { $regex: new RegExp(req.query.source, "i") };
+            }
+            if (req.query.destination) {
+                filter.destination = { $regex: new RegExp(req.query.destination, "i") };
+            }
+            if (req.query.company) {
+                filter.company = { $regex: new RegExp(req.query.company, "i") };
+            }
+
+            const flights = await Flight.find(filter).sort({ flightId: 1 });
+            if (flights && flights.length > 0) {
+                return res.json(flights);
+            }
         }
 
-        const flights = await Flight.find(filter).sort({ flightId: 1 });
+        // Resilient fallback to the standard demonstration flights catalog
+        let flights = [...SAMPLE_FLIGHTS];
+        if (req.query.source) {
+            const s = req.query.source.toLowerCase();
+            flights = flights.filter(f => f.source.toLowerCase().includes(s));
+        }
+        if (req.query.destination) {
+            const d = req.query.destination.toLowerCase();
+            flights = flights.filter(f => f.destination.toLowerCase().includes(d));
+        }
+        if (req.query.company) {
+            const c = req.query.company.toLowerCase();
+            flights = flights.filter(f => f.company.toLowerCase().includes(c));
+        }
         return res.json(flights);
     } catch (error) {
         return res.status(500).json({ error: "Failed to fetch flights." });
@@ -40,16 +58,24 @@ exports.getFlightById = async (req, res) => {
             return res.status(400).json({ error: "Flight ID must be a positive integer." });
         }
 
-        const flight = await Flight.findOne({ flightId: id });
-        if (!flight) {
-            return res.status(404).json({ error: `Flight with ID ${id} not found.` });
+        if (mongoose.connection.readyState === 1) {
+            const flight = await Flight.findOne({ flightId: id });
+            if (flight) {
+                return res.json(flight);
+            }
         }
 
-        return res.json(flight);
+        const fallbackFlight = SAMPLE_FLIGHTS.find(f => f.flightId === id);
+        if (fallbackFlight) {
+            return res.json(fallbackFlight);
+        }
+
+        return res.status(404).json({ error: `Flight with ID ${id} not found.` });
     } catch (error) {
         return res.status(500).json({ error: "Failed to fetch flight." });
     }
 };
+
 
 /**
  * Create a new flight with class-specific fares.
@@ -195,17 +221,26 @@ exports.getFlightBookings = async (req, res) => {
             return res.status(400).json({ error: "Flight ID must be a positive integer." });
         }
 
-        const flight = await Flight.findOne({ flightId: id });
-        if (!flight) {
-            return res.status(404).json({ error: `Flight with ID ${id} not found.` });
+        if (mongoose.connection.readyState === 1) {
+            const flight = await Flight.findOne({ flightId: id });
+            if (!flight) {
+                return res.status(404).json({ error: `Flight with ID ${id} not found.` });
+            }
+
+            const bookings = await Booking.find({ flightId: id })
+                .populate("passenger")
+                .populate("flight")
+                .sort({ seatNumber: 1 });
+
+            return res.json(bookings);
         }
 
-        const bookings = await Booking.find({ flightId: id })
-            .populate("passenger")
-            .populate("flight")
-            .sort({ seatNumber: 1 });
+        const fallbackFlight = SAMPLE_FLIGHTS.find(f => f.flightId === id);
+        if (!fallbackFlight) {
+            return res.status(404).json({ error: `Flight with ID ${id} not found.` });
+        }
+        return res.json([]);
 
-        return res.json(bookings);
     } catch (error) {
         return res.status(500).json({ error: "Failed to fetch bookings for flight." });
     }

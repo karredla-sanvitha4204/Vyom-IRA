@@ -20,6 +20,11 @@ connectDB().then(async (conn) => {
     if (conn) {
         await seedInitialUsers();
         await seedFlights();
+    } else if (connectDB.startAutoReconnect) {
+        connectDB.startAutoReconnect(async () => {
+            await seedInitialUsers();
+            await seedFlights();
+        });
     }
 });
 
@@ -66,12 +71,19 @@ app.use("/api", portalRoutes);
 
 // Root health & API discovery endpoint
 app.get("/", (req, res) => {
+    const mongoose = require("mongoose");
+    const dbState = mongoose.connection.readyState;
+    const dbStates = { 0: "disconnected", 1: "connected", 2: "connecting", 3: "disconnecting" };
     res.json({
         status: "OK",
         brand: "VYOMIRA",
         tagline: "Connecting Earth and Sky.",
         message: "Airline Backend is running!",
         version: "2.0.0",
+        database: {
+            connected: dbState === 1,
+            state: dbStates[dbState] || "unknown"
+        },
         endpoints: {
             flights: "/flights",
             passengers: "/passengers",
@@ -93,6 +105,18 @@ app.get("/", (req, res) => {
         }
     });
 });
+
+// Dedicated health probe
+app.get("/health", (req, res) => {
+    const mongoose = require("mongoose");
+    const dbState = mongoose.connection.readyState;
+    res.json({
+        status: "OK",
+        databaseConnected: dbState === 1,
+        uptime: process.uptime()
+    });
+});
+
 
 // Centralized error handling middleware
 app.use((err, req, res, next) => {

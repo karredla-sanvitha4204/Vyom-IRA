@@ -34,15 +34,17 @@ export const PassengerHome = () => {
 
   const fetchFlights = async () => {
     setLoading(true);
+    setError('');
     try {
       const data = await api.flights.getAll();
       setFlights(data);
     } catch (err) {
-      setError('Could not load flights. Please ensure the backend server is running.');
+      setError(err.message || 'Could not load flights. Please ensure the backend server is running.');
     } finally {
       setLoading(false);
     }
   };
+
 
   // Unique sources and destinations for quick dropdown selection
   const sources = [...new Set(flights.map(f => f.source))].sort();
