@@ -144,8 +144,3 @@ java airline.Main
 Or import the `airline` directory into Eclipse or IntelliJ IDEA as an existing Java project.
 
 ---
-
-## 🔐 Default Administrative Access
-- **Admin Email**: `admin@airline.com`
-- **Password**: `AdminPassword@123`
-*(Authorized administrative accounts enter `/admin/dashboard` upon login.)*
