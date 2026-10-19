@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Flight = require("../models/Flight");
 const Booking = require("../models/Booking");
 
@@ -6,6 +7,11 @@ const Booking = require("../models/Booking");
  */
 exports.getAllFlights = async (req, res) => {
     try {
+        if (mongoose.connection.readyState !== 1) {
+            return res.status(503).json({
+                error: "Database is connecting or unavailable. Please verify MONGODB_URI in Render environment variables."
+            });
+        }
         const filter = {};
         if (req.query.source) {
             filter.source = { $regex: new RegExp(req.query.source, "i") };

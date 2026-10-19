@@ -46,14 +46,17 @@ exports.createPassenger = async (req, res) => {
             return res.status(400).json({ error: "Passenger name is required and must be a non-empty string." });
         }
 
+        if (age === undefined || age === null || age === "") {
+            return res.status(400).json({ error: "Age is required and must be an integer between 1 and 120." });
+        }
         const numericAge = Number(age);
-        if (age !== undefined && (!Number.isInteger(numericAge) || numericAge < 1 || numericAge > 120)) {
+        if (!Number.isInteger(numericAge) || numericAge < 1 || numericAge > 120) {
             return res.status(400).json({ error: "Age must be an integer between 1 and 120." });
         }
 
         const passenger = await Passenger.create({
             name: name.trim(),
-            age: numericAge || 30,
+            age: numericAge,
             email: email ? String(email).trim().toLowerCase() : undefined,
             phone: phone ? String(phone).trim() : undefined,
             wheelchair: Boolean(wheelchair),
@@ -83,6 +86,9 @@ exports.updatePassenger = async (req, res) => {
         }
 
         const updateData = { ...req.body };
+        if (updateData.name !== undefined && (typeof updateData.name !== "string" || updateData.name.trim() === "")) {
+            return res.status(400).json({ error: "Passenger name is required and must be a non-empty string." });
+        }
         if (updateData.age !== undefined) {
             const numericAge = Number(updateData.age);
             if (!Number.isInteger(numericAge) || numericAge < 1 || numericAge > 120) {

@@ -16,9 +16,11 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Connect to MongoDB and seed administrative accounts and demonstration flights
-connectDB().then(async () => {
-    await seedInitialUsers();
-    await seedFlights();
+connectDB().then(async (conn) => {
+    if (conn) {
+        await seedInitialUsers();
+        await seedFlights();
+    }
 });
 
 // Middleware: CORS headers for full-stack access
